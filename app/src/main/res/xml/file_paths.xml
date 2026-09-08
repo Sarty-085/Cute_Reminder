@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="external_download" path="Download/" />
-    <external-cache-path name="external_cache" path="." />
-    <cache-path name="internal_cache" path="." />
-    <files-path name="internal_files" path="." />
+    <!-- Restrict FileProvider strictly to the internal cache directory for update APKs -->
+    <cache-path name="sipkitty_updates" path="updates/" />
 </paths>
