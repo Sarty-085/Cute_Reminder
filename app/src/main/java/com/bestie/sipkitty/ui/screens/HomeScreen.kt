@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.Card
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,17 +40,16 @@ import com.bestie.sipkitty.data.DrinkEntry
 import com.bestie.sipkitty.ui.components.KittenMascot
 import com.bestie.sipkitty.ui.components.QuickAddButtons
 import com.bestie.sipkitty.ui.components.WaterReservoir
+import com.bestie.sipkitty.ui.sound.SoundEffectManager
 import com.bestie.sipkitty.ui.theme.AccentHeart
 import com.bestie.sipkitty.ui.theme.CardSurface
 import com.bestie.sipkitty.ui.theme.CreamBackground
-import com.bestie.sipkitty.ui.theme.GoldStar
-import com.bestie.sipkitty.ui.theme.SakuraPink
 import com.bestie.sipkitty.ui.theme.SoftPink
 import com.bestie.sipkitty.ui.theme.TextPrimary
 import com.bestie.sipkitty.ui.theme.TextSecondary
-import com.bestie.sipkitty.ui.theme.WaterBlue
 import com.bestie.sipkitty.ui.viewmodel.WaterViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -57,6 +58,7 @@ fun HomeScreen(
     viewModel: WaterViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val prefs by viewModel.userPreferences.collectAsState()
     val todayTotal by viewModel.todayTotalMl.collectAsState()
     val todayDrinks by viewModel.todayDrinks.collectAsState()
@@ -64,10 +66,18 @@ fun HomeScreen(
 
     val progress = if (prefs.dailyGoalMl > 0) todayTotal.toFloat() / prefs.dailyGoalMl else 0f
 
+    // Check if within quiet/bedtime hours
+    val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val isSleepMode = if (prefs.startHour <= prefs.endHour) {
+        currentHour < prefs.startHour || currentHour >= prefs.endHour
+    } else {
+        currentHour >= prefs.endHour && currentHour < prefs.startHour
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(CreamBackground)
+            .background(if (isSleepMode) Color(0xFFF9F6FC) else CreamBackground)
             .padding(horizontal = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -87,7 +97,7 @@ fun HomeScreen(
                         color = TextPrimary
                     )
                     Text(
-                        text = "Let's stay glowing & hydrated!",
+                        text = if (isSleepMode) "Bedtime mode active 🌙 Rest well!" else "Let's stay glowing & hydrated!",
                         fontSize = 13.sp,
                         color = TextSecondary
                     )
@@ -103,9 +113,9 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
+                            imageVector = if (isSleepMode) Icons.Default.Bedtime else Icons.Default.LocalFireDepartment,
                             contentDescription = "Streak",
-                            tint = AccentHeart,
+                            tint = if (isSleepMode) Color(0xFF7E57C2) else AccentHeart,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -122,11 +132,14 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Kitten Mascot
+        // Kitten Mascot (with sleep mode, dress-up, and sounds)
         item {
             KittenMascot(
                 progress = progress,
+                isSleepMode = isSleepMode,
+                equippedAccessory = prefs.equippedAccessory,
                 bestieName = prefs.bestieName,
+                soundEnabled = prefs.soundEnabled,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -146,6 +159,7 @@ fun HomeScreen(
         item {
             QuickAddButtons(
                 onAddDrink = { amount, type ->
+                    SoundEffectManager.playWaterPour(context, prefs.soundEnabled)
                     viewModel.addDrink(amount, type)
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -208,14 +222,17 @@ fun HomeScreen(
             items(todayDrinks, key = { it.id }) { drink ->
                 DrinkEntryRow(
                     drink = drink,
-                    onDelete = { viewModel.deleteDrink(drink) }
+                    onDelete = {
+                        SoundEffectManager.playBubblePop(context, prefs.soundEnabled)
+                        viewModel.deleteDrink(drink)
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(90.dp)) // padding for bottom nav
+            Spacer(modifier = Modifier.height(90.dp))
         }
     }
 }
@@ -230,8 +247,10 @@ private fun DrinkEntryRow(
 
     val (emoji, typeName) = when (drink.drinkType) {
         "WATER" -> "🥛" to "Water"
-        "TEA" -> "☕" to "Tea / Coffee"
-        "BOBA" -> "🧋" to "Boba / Milk"
+        "TEA" -> "☕" to "Tea"
+        "BOBA" -> "🧋" to "Boba"
+        "COFFEE" -> "☕" to "Coffee"
+        "JUICE" -> "🥤" to "Juice"
         else -> "🥤" to "Drink"
     }
 

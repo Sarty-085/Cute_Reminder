@@ -17,7 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -36,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bestie.sipkitty.BuildConfig
+import com.bestie.sipkitty.ui.sound.SoundEffectManager
 import com.bestie.sipkitty.ui.theme.CardSurface
 import com.bestie.sipkitty.ui.theme.CreamBackground
 import com.bestie.sipkitty.ui.theme.SakuraPink
@@ -96,7 +100,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
 
-        // 1. Bestie Nickname Card (Saves on Done / Blur, not every keystroke)
+        // 1. Bestie Nickname Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -188,7 +192,137 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 3. Reminder Settings Card
+        // 3. Sound Effects & Soft Haptics Toggle
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSurface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.VolumeUp, contentDescription = "Sound", tint = SakuraPink, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Sound Effects & Haptics",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = TextPrimary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Bubbly sound chimes and gentle vibrations on taps",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Switch(
+                        checked = prefs.soundEnabled,
+                        onCheckedChange = {
+                            viewModel.toggleSoundEnabled(it)
+                            if (it) SoundEffectManager.playBubblePop(context, true)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = SakuraPink
+                        )
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // 4. Quiet Hours & Bedtime Sleep Mode Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSurface)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Bedtime, contentDescription = "Bedtime", tint = Color(0xFF7E57C2), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Quiet Hours & Sleep Mode 🌙",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = TextPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Notifications pause and Kitty enters cozy Sleep Mode during these hours.",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Wake up Hour (Start of reminders)
+                    Text(text = "Wake Up (Reminders start):", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val wakeOptions = listOf(7 to "7:00 AM", 8 to "8:00 AM", 9 to "9:00 AM", 10 to "10:00 AM")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        wakeOptions.forEach { (hr, label) ->
+                            FilterChip(
+                                selected = prefs.startHour == hr,
+                                onClick = {
+                                    SoundEffectManager.playBubblePop(context, prefs.soundEnabled)
+                                    viewModel.updateQuietHours(hr, prefs.endHour, context)
+                                },
+                                label = { Text(label, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = SoftPink,
+                                    selectedLabelColor = TextPrimary
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Bedtime Hour (End of reminders, sleep mode begins)
+                    Text(text = "Bedtime (Kitty sleeps & quiet hours):", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val bedOptions = listOf(21 to "9:00 PM", 22 to "10:00 PM", 23 to "11:00 PM", 0 to "12:00 AM")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        bedOptions.forEach { (hr, label) ->
+                            FilterChip(
+                                selected = prefs.endHour == hr,
+                                onClick = {
+                                    SoundEffectManager.playBubblePop(context, prefs.soundEnabled)
+                                    viewModel.updateQuietHours(prefs.startHour, hr, context)
+                                },
+                                label = { Text(label, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFE2D4F0),
+                                    selectedLabelColor = TextPrimary
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // 5. Reminder Settings Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -209,7 +343,7 @@ fun SettingsScreen(
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Cute nudges throughout the day",
+                                text = "Cute nudges with gentle vibration",
                                 fontSize = 12.sp,
                                 color = TextSecondary
                             )
@@ -217,7 +351,10 @@ fun SettingsScreen(
 
                         Switch(
                             checked = prefs.remindersEnabled,
-                            onCheckedChange = { viewModel.toggleReminders(it, context) },
+                            onCheckedChange = {
+                                SoundEffectManager.playBubblePop(context, prefs.soundEnabled)
+                                viewModel.toggleReminders(it, context)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = SakuraPink
@@ -244,7 +381,10 @@ fun SettingsScreen(
                                 val isSelected = prefs.reminderIntervalMinutes == minutes
                                 FilterChip(
                                     selected = isSelected,
-                                    onClick = { viewModel.updateReminderInterval(minutes, context) },
+                                    onClick = {
+                                        SoundEffectManager.playBubblePop(context, prefs.soundEnabled)
+                                        viewModel.updateReminderInterval(minutes, context)
+                                    },
                                     label = { Text("${minutes}m") },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = SoftPink,
@@ -259,7 +399,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 4. In-App GitHub Auto-Updater Card
+        // 6. In-App GitHub Auto-Updater Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -298,7 +438,10 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Button(
-                        onClick = { viewModel.checkForUpdates(silent = false) },
+                        onClick = {
+                            SoundEffectManager.playBubblePop(context, prefs.soundEnabled)
+                            viewModel.checkForUpdates(silent = false)
+                        },
                         enabled = !isCheckingUpdate,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = WaterBlue),

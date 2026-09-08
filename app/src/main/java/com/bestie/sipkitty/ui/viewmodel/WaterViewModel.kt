@@ -12,6 +12,7 @@ import com.bestie.sipkitty.reminder.ReminderScheduler
 import com.bestie.sipkitty.updater.ApkInstaller
 import com.bestie.sipkitty.updater.GitHubReleaseChecker
 import com.bestie.sipkitty.updater.UpdateInfo
+import com.bestie.sipkitty.widget.SipKittyWidgetProvider
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,7 +41,9 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
                 startHour = 9,
                 endHour = 21,
                 bestieName = "Bestie",
-                lastUpdateCheckTime = 0L
+                lastUpdateCheckTime = 0L,
+                equippedAccessory = "NONE",
+                soundEnabled = true
             )
         )
 
@@ -116,6 +119,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         totalJob = viewModelScope.launch {
             drinkDao.getTotalBetween(startTime, endTime).collect { total ->
                 _todayTotalMl.value = total
+                SipKittyWidgetProvider.notifyDataChanged(getApplication())
             }
         }
 
@@ -153,7 +157,6 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addDrink(amountMl: Int, drinkType: String = "WATER", note: String = "") {
-        // Input validation guard
         if (amountMl <= 0) return
 
         refreshIfDayChanged()
@@ -166,6 +169,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
             calculateStreak()
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
         }
     }
 
@@ -174,6 +178,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             drinkDao.deleteDrink(drink)
             calculateStreak()
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
         }
     }
 
@@ -181,12 +186,42 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         if (goalMl <= 0) return
         viewModelScope.launch {
             preferencesRepository.updateDailyGoal(goalMl)
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
         }
     }
 
     fun updateBestieName(name: String) {
         viewModelScope.launch {
             preferencesRepository.updateBestieName(name.trim())
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
+        }
+    }
+
+    fun equipAccessory(accessory: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateEquippedAccessory(accessory)
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
+        }
+    }
+
+    fun toggleSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateSoundEnabled(enabled)
+        }
+    }
+
+    fun updateQuietHours(startHour: Int, endHour: Int, context: Context) {
+        viewModelScope.launch {
+            preferencesRepository.updateQuietHours(startHour, endHour)
+            if (userPreferences.value.remindersEnabled) {
+                ReminderScheduler.scheduleNext(
+                    context = context,
+                    intervalMinutes = userPreferences.value.reminderIntervalMinutes,
+                    startHour = startHour,
+                    endHour = endHour
+                )
+            }
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
         }
     }
 
