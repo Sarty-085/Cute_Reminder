@@ -38,7 +38,6 @@ import com.bestie.sipkitty.ui.theme.GoldStar
 import com.bestie.sipkitty.ui.theme.LavenderPastel
 import com.bestie.sipkitty.ui.theme.MintPastel
 import com.bestie.sipkitty.ui.theme.PeachPastel
-import com.bestie.sipkitty.ui.theme.SakuraPink
 import com.bestie.sipkitty.ui.theme.SoftPink
 import com.bestie.sipkitty.ui.theme.TextPrimary
 import com.bestie.sipkitty.ui.theme.TextSecondary
@@ -171,6 +170,7 @@ fun HistoryScreen(
         items(badges.size) { index ->
             val badge = badges[index]
             val isUnlocked = streak >= badge.requiredStreak
+            val daysLeft = maxOf(0, badge.requiredStreak - streak)
 
             Card(
                 modifier = Modifier
@@ -234,10 +234,10 @@ fun HistoryScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (isUnlocked) "Unlocked! 🎉" else "Need ${badge.requiredStreak} day streak (${badge.requiredStreak - streak} days left)",
+                            text = if (isUnlocked) "Unlocked! 🎉" else "Need ${badge.requiredStreak} day streak ($daysLeft days left)",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = if (isUnlocked) Color(0xFF2E7D32) else SakuraPink
+                            color = if (isUnlocked) Color(0xFF2E7D32) else SoftPink
                         )
                     }
                 }

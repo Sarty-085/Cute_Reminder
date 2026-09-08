@@ -7,9 +7,7 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 data class ReleaseAsset(
     @SerializedName("name") val name: String,
@@ -31,7 +29,8 @@ data class UpdateInfo(
     val releaseTitle: String,
     val releaseNotes: String,
     val downloadUrl: String,
-    val fileName: String
+    val fileName: String,
+    val expectedSha256: String? = null
 )
 
 class GitHubReleaseChecker(private val context: Context) {
@@ -43,11 +42,7 @@ class GitHubReleaseChecker(private val context: Context) {
             "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/latest"
     }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
-
+    private val client = NetworkClient.okHttpClient
     private val gson = Gson()
 
     suspend fun checkForUpdates(): Result<UpdateInfo> = withContext(Dispatchers.IO) {
@@ -72,6 +67,26 @@ class GitHubReleaseChecker(private val context: Context) {
             val apkAsset = release.assets?.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
                 ?: return@withContext Result.failure(Exception("No APK found in the latest release assets"))
 
+            // Find SHA-256 checksum asset or extract from body
+            var expectedSha256: String? = null
+            val shaAsset = release.assets?.firstOrNull { it.name.endsWith(".sha256", ignoreCase = true) }
+            if (shaAsset != null) {
+                try {
+                    val shaReq = Request.Builder().url(shaAsset.downloadUrl).build()
+                    val shaResp = client.newCall(shaReq).execute()
+                    if (shaResp.isSuccessful) {
+                        expectedSha256 = shaResp.body?.string()?.trim()?.split("\\s+".toRegex())?.firstOrNull()
+                    }
+                } catch (_: Exception) {
+                    // Fallback to body parsing
+                }
+            }
+
+            if (expectedSha256 == null && release.body != null) {
+                val shaRegex = Regex("""(?i)(?:SHA-?256|checksum):\s*([a-f0-9]{64})""")
+                expectedSha256 = shaRegex.find(release.body)?.groupValues?.get(1)?.lowercase()
+            }
+
             val currentVersion = getCurrentVersionName()
             val latestVersion = release.tagName.removePrefix("v").trim()
 
@@ -85,7 +100,8 @@ class GitHubReleaseChecker(private val context: Context) {
                     releaseTitle = release.title ?: "Release ${release.tagName}",
                     releaseNotes = release.body ?: "No release notes provided.",
                     downloadUrl = apkAsset.downloadUrl,
-                    fileName = apkAsset.name
+                    fileName = apkAsset.name,
+                    expectedSha256 = expectedSha256
                 )
             )
         } catch (e: Exception) {

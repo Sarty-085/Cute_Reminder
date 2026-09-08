@@ -20,7 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "sipkitty_database"
                 )
-                    .fallbackToDestructiveMigrationOnDowngrade()
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

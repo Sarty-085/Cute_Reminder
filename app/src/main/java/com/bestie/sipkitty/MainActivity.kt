@@ -1,6 +1,7 @@
 package com.bestie.sipkitty
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -22,7 +23,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,21 +58,58 @@ class MainActivity : ComponentActivity() {
 
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            // Notification permission result handled
+            // Notification permission handled
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         checkNotificationPermission()
+        handleUpdateIntent(intent)
 
-        // Check for updates on startup (silent check)
+        // Silent check for updates on startup
         viewModel.checkForUpdates(silent = true)
 
         setContent {
             SipKittyTheme {
                 MainContent(viewModel = viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleUpdateIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshIfDayChanged()
+    }
+
+    private fun handleUpdateIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("EXTRA_SHOW_UPDATE_DIALOG", false) == true) {
+            val latestVersion = intent.getStringExtra("EXTRA_LATEST_VERSION") ?: return
+            val downloadUrl = intent.getStringExtra("EXTRA_DOWNLOAD_URL") ?: return
+            val fileName = intent.getStringExtra("EXTRA_FILE_NAME") ?: "SipKitty.apk"
+            val currentVersion = intent.getStringExtra("EXTRA_CURRENT_VERSION") ?: BuildConfig.VERSION_NAME
+            val releaseTitle = intent.getStringExtra("EXTRA_RELEASE_TITLE") ?: "Release $latestVersion"
+            val releaseNotes = intent.getStringExtra("EXTRA_RELEASE_NOTES") ?: ""
+            val expectedSha256 = intent.getStringExtra("EXTRA_EXPECTED_SHA256")
+
+            viewModel.setPendingUpdate(
+                UpdateInfo(
+                    isUpdateAvailable = true,
+                    latestVersion = latestVersion,
+                    currentVersion = currentVersion,
+                    releaseTitle = releaseTitle,
+                    releaseNotes = releaseNotes,
+                    downloadUrl = downloadUrl,
+                    fileName = fileName,
+                    expectedSha256 = expectedSha256
+                )
+            )
         }
     }
 

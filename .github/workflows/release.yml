@@ -30,11 +30,15 @@ jobs:
       - name: Build Signed Release APK
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Rename APK for Release
+      - name: Package Release & Compute SHA-256 Checksums
         run: |
           mkdir -p release-assets
           cp app/build/outputs/apk/release/app-release.apk release-assets/SipKitty-${{ github.ref_name }}.apk
           cp app/build/outputs/apk/release/app-release.apk release-assets/SipKitty.apk
+          cd release-assets
+          sha256sum SipKitty.apk | awk '{print $1}' > SipKitty.apk.sha256
+          SHA256_VAL=$(cat SipKitty.apk.sha256)
+          echo "APK_SHA256=$SHA256_VAL" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -45,10 +49,12 @@ jobs:
             ## What's New in SipKitty ${{ github.ref_name }} 🐱✨
             
             - Download `SipKitty.apk` below to install or update.
-            - **Security & Privacy**: 100% offline data storage, zero trackers, encrypted HTTPS-only traffic.
+            - **Security & Integrity**: 100% offline data storage, zero trackers, encrypted HTTPS-only traffic.
+            - **SHA-256 Checksum**: `${{ env.APK_SHA256 }}`
             - **Seamless Update**: All your hydration logs, streaks, and settings are preserved!
           files: |
             release-assets/SipKitty.apk
             release-assets/SipKitty-${{ github.ref_name }}.apk
+            release-assets/SipKitty.apk.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

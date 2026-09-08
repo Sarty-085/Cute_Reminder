@@ -52,13 +52,18 @@ class UpdateWorker(
         val checker = GitHubReleaseChecker(context)
         val result = checker.checkForUpdates()
 
-        result.onSuccess { updateInfo ->
-            if (updateInfo.isUpdateAvailable) {
-                showUpdateNotification(updateInfo)
+        return result.fold(
+            onSuccess = { updateInfo ->
+                if (updateInfo.isUpdateAvailable) {
+                    showUpdateNotification(updateInfo)
+                }
+                Result.success()
+            },
+            onFailure = {
+                // Retry if network error or temporary failure
+                Result.retry()
             }
-        }
-
-        return Result.success()
+        )
     }
 
     private fun showUpdateNotification(updateInfo: UpdateInfo) {
@@ -80,9 +85,12 @@ class UpdateWorker(
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("EXTRA_SHOW_UPDATE_DIALOG", true)
             putExtra("EXTRA_LATEST_VERSION", updateInfo.latestVersion)
+            putExtra("EXTRA_CURRENT_VERSION", updateInfo.currentVersion)
+            putExtra("EXTRA_RELEASE_TITLE", updateInfo.releaseTitle)
             putExtra("EXTRA_RELEASE_NOTES", updateInfo.releaseNotes)
             putExtra("EXTRA_DOWNLOAD_URL", updateInfo.downloadUrl)
             putExtra("EXTRA_FILE_NAME", updateInfo.fileName)
+            putExtra("EXTRA_EXPECTED_SHA256", updateInfo.expectedSha256)
         }
 
         val pendingIntent = PendingIntent.getActivity(

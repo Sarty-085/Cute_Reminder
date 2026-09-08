@@ -12,6 +12,7 @@ import com.bestie.sipkitty.reminder.ReminderScheduler
 import com.bestie.sipkitty.updater.ApkInstaller
 import com.bestie.sipkitty.updater.GitHubReleaseChecker
 import com.bestie.sipkitty.updater.UpdateInfo
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.TimeZone
 
 class WaterViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -67,6 +69,10 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateMessage = MutableStateFlow<String?>(null)
     val updateMessage: StateFlow<String?> = _updateMessage.asStateFlow()
 
+    private var activeDayOfYear: Int = -1
+    private var totalJob: Job? = null
+    private var drinksJob: Job? = null
+
     init {
         loadTodayData()
         calculateStreak()
@@ -92,16 +98,28 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         return Pair(startTime, endTime)
     }
 
+    fun refreshIfDayChanged() {
+        val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+        if (today != activeDayOfYear) {
+            loadTodayData()
+            calculateStreak()
+        }
+    }
+
     private fun loadTodayData() {
+        activeDayOfYear = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
         val (startTime, endTime) = getDayStartAndEndTime()
 
-        viewModelScope.launch {
+        totalJob?.cancel()
+        drinksJob?.cancel()
+
+        totalJob = viewModelScope.launch {
             drinkDao.getTotalBetween(startTime, endTime).collect { total ->
                 _todayTotalMl.value = total
             }
         }
 
-        viewModelScope.launch {
+        drinksJob = viewModelScope.launch {
             drinkDao.getDrinksBetween(startTime, endTime).collect { drinks ->
                 _todayDrinks.value = drinks
             }
@@ -110,13 +128,14 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun calculateStreak() {
         viewModelScope.launch {
-            drinkDao.getDistinctIntakeDays().collect { days ->
+            val tzOffset = TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
+            drinkDao.getDistinctIntakeDays(tzOffset).collect { days ->
                 if (days.isEmpty()) {
                     _currentStreak.value = 0
                     return@collect
                 }
 
-                val currentDayNumber = System.currentTimeMillis() / 86400000L
+                val currentDayNumber = (System.currentTimeMillis() + tzOffset) / 86400000L
                 var streak = 0
                 var expectedDay = if (days.contains(currentDayNumber)) currentDayNumber else currentDayNumber - 1
 
@@ -134,6 +153,10 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addDrink(amountMl: Int, drinkType: String = "WATER", note: String = "") {
+        // Input validation guard
+        if (amountMl <= 0) return
+
+        refreshIfDayChanged()
         viewModelScope.launch {
             drinkDao.insertDrink(
                 DrinkEntry(
@@ -147,6 +170,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteDrink(drink: DrinkEntry) {
+        refreshIfDayChanged()
         viewModelScope.launch {
             drinkDao.deleteDrink(drink)
             calculateStreak()
@@ -154,6 +178,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateDailyGoal(goalMl: Int) {
+        if (goalMl <= 0) return
         viewModelScope.launch {
             preferencesRepository.updateDailyGoal(goalMl)
         }
@@ -161,7 +186,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateBestieName(name: String) {
         viewModelScope.launch {
-            preferencesRepository.updateBestieName(name)
+            preferencesRepository.updateBestieName(name.trim())
         }
     }
 
@@ -169,7 +194,13 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             preferencesRepository.updateRemindersEnabled(enabled)
             if (enabled) {
-                ReminderScheduler.scheduleNext(context, userPreferences.value.reminderIntervalMinutes)
+                val prefs = userPreferences.value
+                ReminderScheduler.scheduleNext(
+                    context = context,
+                    intervalMinutes = prefs.reminderIntervalMinutes,
+                    startHour = prefs.startHour,
+                    endHour = prefs.endHour
+                )
             } else {
                 ReminderScheduler.cancel(context)
             }
@@ -177,12 +208,23 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateReminderInterval(minutes: Int, context: Context) {
+        if (minutes <= 0) return
         viewModelScope.launch {
             preferencesRepository.updateReminderInterval(minutes)
             if (userPreferences.value.remindersEnabled) {
-                ReminderScheduler.scheduleNext(context, minutes)
+                val prefs = userPreferences.value
+                ReminderScheduler.scheduleNext(
+                    context = context,
+                    intervalMinutes = minutes,
+                    startHour = prefs.startHour,
+                    endHour = prefs.endHour
+                )
             }
         }
+    }
+
+    fun setPendingUpdate(info: UpdateInfo) {
+        _updateInfo.value = info
     }
 
     fun checkForUpdates(silent: Boolean = false) {
@@ -202,7 +244,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }.onFailure { err ->
                 if (!silent) {
-                    _updateMessage.value = "Could not check for updates: ${err.localizedMessage ?: "Unknown error"}"
+                    _updateMessage.value = "Could not check for updates: ${err.localizedMessage ?: "Network error"}"
                 }
             }
         }
@@ -223,7 +265,8 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
             val result = ApkInstaller.downloadApk(
                 context = context,
                 downloadUrl = info.downloadUrl,
-                fileName = info.fileName
+                fileName = info.fileName,
+                expectedSha256 = info.expectedSha256
             ) { progress ->
                 _downloadProgress.value = progress
             }

@@ -8,10 +8,11 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.security.MessageDigest
 
 object ApkInstaller {
 
@@ -33,14 +34,18 @@ object ApkInstaller {
         }
     }
 
+    /**
+     * Downloads APK from GitHub and verifies SHA-256 checksum integrity before permitting install.
+     */
     suspend fun downloadApk(
         context: Context,
         downloadUrl: String,
         fileName: String,
+        expectedSha256: String? = null,
         onProgress: (Int) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
-            val client = OkHttpClient.Builder().build()
+            val client = NetworkClient.okHttpClient
             val request = Request.Builder().url(downloadUrl).build()
             val response = client.newCall(request).execute()
 
@@ -79,10 +84,33 @@ object ApkInstaller {
             outputStream.close()
             inputStream.close()
 
+            // Cryptographic SHA-256 integrity verification
+            if (!expectedSha256.isNullOrBlank()) {
+                val computedHash = calculateSha256(apkFile)
+                if (!computedHash.equals(expectedSha256.trim(), ignoreCase = true)) {
+                    apkFile.delete()
+                    return@withContext Result.failure(
+                        SecurityException("APK integrity check failed! Expected: $expectedSha256, Computed: $computedHash")
+                    )
+                }
+            }
+
             Result.success(apkFile)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun calculateSha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        FileInputStream(file).use { fis ->
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+            while (fis.read(buffer).also { bytesRead = it } != -1) {
+                digest.update(buffer, 0, bytesRead)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     fun installApk(context: Context, apkFile: File) {

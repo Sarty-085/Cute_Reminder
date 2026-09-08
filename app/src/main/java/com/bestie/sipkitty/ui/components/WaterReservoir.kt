@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -105,13 +103,16 @@ fun WaterReservoir(
                 )
 
                 if (animatedProgress > 0.005f) {
+                    val stepSize = 18f
+                    val steps = (width / stepSize).toInt()
+
                     // Back wave
                     val backWavePath = Path().apply {
                         moveTo(0f, height)
                         lineTo(0f, waterLevel)
                         val waveAmplitude = 14f * animatedProgress
-                        for (x in 0..width.toInt() step 10) {
-                            val xF = x.toFloat()
+                        for (i in 0..steps) {
+                            val xF = (i * stepSize).coerceAtMost(width)
                             val y = waterLevel + waveAmplitude * sin((xF / width * 2 * PI + wavePhase + 1f)).toFloat()
                             lineTo(xF, y)
                         }
@@ -125,8 +126,8 @@ fun WaterReservoir(
                         moveTo(0f, height)
                         lineTo(0f, waterLevel)
                         val waveAmplitude = 12f * animatedProgress
-                        for (x in 0..width.toInt() step 10) {
-                            val xF = x.toFloat()
+                        for (i in 0..steps) {
+                            val xF = (i * stepSize).coerceAtMost(width)
                             val y = waterLevel + waveAmplitude * sin((xF / width * 2 * PI + wavePhase)).toFloat()
                             lineTo(xF, y)
                         }

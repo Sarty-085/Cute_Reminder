@@ -21,5 +21,3 @@ val GoldStar = Color(0xFFFFD54F)
 val TextPrimary = Color(0xFF2C3E50)
 val TextSecondary = Color(0xFF7F8C8D)
 val AccentHeart = Color(0xFFFF5252)
-
-val ThirstyGray = Color(0xFFB0BEC5)

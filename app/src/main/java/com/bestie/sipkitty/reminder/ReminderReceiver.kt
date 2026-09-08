@@ -1,12 +1,10 @@
 package com.bestie.sipkitty.reminder
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.bestie.sipkitty.MainActivity
 import com.bestie.sipkitty.R
@@ -36,33 +34,25 @@ class ReminderReceiver : BroadcastReceiver() {
             return
         }
 
-        // Check if current time is within waking hours (e.g. 9 AM - 9 PM)
+        val startHour = intent.getIntExtra(ReminderScheduler.EXTRA_START_HOUR, 9)
+        val endHour = intent.getIntExtra(ReminderScheduler.EXTRA_END_HOUR, 21)
+        val intervalMinutes = intent.getIntExtra(ReminderScheduler.EXTRA_INTERVAL_MINUTES, 90)
+
+        // Check if current time is within user-configured waking hours
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        if (hour < 9 || hour > 21) {
-            // Outside normal waking hours, don't disturb sleep
-            ReminderScheduler.scheduleNext(context)
+        if (hour < startHour || hour > endHour) {
+            // Outside user's designated hours (quiet hours), schedule next check without waking user
+            ReminderScheduler.scheduleNext(context, intervalMinutes, startHour, endHour)
             return
         }
 
         showReminderNotification(context)
-        ReminderScheduler.scheduleNext(context)
+        ReminderScheduler.scheduleNext(context, intervalMinutes, startHour, endHour)
     }
 
     private fun showReminderNotification(context: Context) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = context.getString(R.string.notification_channel_desc)
-                enableVibration(true)
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
 
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

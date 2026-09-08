@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,15 +41,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bestie.sipkitty.BuildConfig
 import com.bestie.sipkitty.ui.theme.CardSurface
 import com.bestie.sipkitty.ui.theme.CreamBackground
-import com.bestie.sipkitty.ui.theme.MintPastel
 import com.bestie.sipkitty.ui.theme.SakuraPink
 import com.bestie.sipkitty.ui.theme.SoftPink
 import com.bestie.sipkitty.ui.theme.TextPrimary
@@ -63,6 +65,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val prefs by viewModel.userPreferences.collectAsState()
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsState()
     val updateMessage by viewModel.updateMessage.collectAsState()
@@ -93,7 +96,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
 
-        // 1. Bestie Nickname Card
+        // 1. Bestie Nickname Card (Saves on Done / Blur, not every keystroke)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -110,14 +113,24 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = bestieNameInput,
-                        onValueChange = {
-                            bestieNameInput = it
-                            viewModel.updateBestieName(it)
-                        },
+                        onValueChange = { bestieNameInput = it },
                         label = { Text("Nickname") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused && bestieNameInput != prefs.bestieName) {
+                                    viewModel.updateBestieName(bestieNameInput)
+                                }
+                            },
                         shape = RoundedCornerShape(14.dp),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                viewModel.updateBestieName(bestieNameInput)
+                                focusManager.clearFocus()
+                            }
+                        )
                     )
                 }
             }

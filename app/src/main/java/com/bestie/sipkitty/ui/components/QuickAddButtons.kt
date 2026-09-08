@@ -16,6 +16,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -147,8 +149,8 @@ fun QuickAddButtons(
     if (showCustomDialog) {
         CustomAmountDialog(
             onDismiss = { showCustomDialog = false },
-            onConfirm = { amount ->
-                onAddDrink(amount, "WATER")
+            onConfirm = { amount, type ->
+                onAddDrink(amount, type)
                 showCustomDialog = false
             }
         )
@@ -158,9 +160,18 @@ fun QuickAddButtons(
 @Composable
 private fun CustomAmountDialog(
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int, String) -> Unit
 ) {
     var sliderValue by remember { mutableFloatStateOf(300f) }
+    var selectedDrinkType by remember { mutableStateOf("WATER") }
+
+    val drinkTypes = listOf(
+        "WATER" to "🥛 Water",
+        "TEA" to "☕ Tea",
+        "BOBA" to "🧋 Boba",
+        "COFFEE" to "☕ Coffee",
+        "JUICE" to "🥤 Juice"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -179,7 +190,7 @@ private fun CustomAmountDialog(
                     fontWeight = FontWeight.Bold,
                     color = WaterBlue
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Slider(
                     value = sliderValue,
                     onValueChange = { sliderValue = it },
@@ -190,11 +201,54 @@ private fun CustomAmountDialog(
                         activeTrackColor = WaterBlue
                     )
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Select Drink Type:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    drinkTypes.take(3).forEach { (type, label) ->
+                        FilterChip(
+                            selected = selectedDrinkType == type,
+                            onClick = { selectedDrinkType = type },
+                            label = { Text(label, fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = SoftPink,
+                                selectedLabelColor = TextPrimary
+                            )
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    drinkTypes.drop(3).forEach { (type, label) ->
+                        FilterChip(
+                            selected = selectedDrinkType == type,
+                            onClick = { selectedDrinkType = type },
+                            label = { Text(label, fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = SoftPink,
+                                selectedLabelColor = TextPrimary
+                            )
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(sliderValue.toInt()) },
+                onClick = { onConfirm(sliderValue.toInt(), selectedDrinkType) },
                 colors = ButtonDefaults.buttonColors(containerColor = SakuraPink)
             ) {
                 Text("Log Sip", color = Color.White)

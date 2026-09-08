@@ -24,8 +24,8 @@ interface DrinkDao {
     @Query("SELECT * FROM drinks ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentDrinks(limit: Int = 20): Flow<List<DrinkEntry>>
 
-    @Query("SELECT DISTINCT (timestamp / 86400000) FROM drinks ORDER BY (timestamp / 86400000) DESC")
-    fun getDistinctIntakeDays(): Flow<List<Long>>
+    @Query("SELECT DISTINCT ((timestamp + :tzOffsetMs) / 86400000) FROM drinks ORDER BY ((timestamp + :tzOffsetMs) / 86400000) DESC")
+    fun getDistinctIntakeDays(tzOffsetMs: Long): Flow<List<Long>>
 
     @Query("SELECT COUNT(*) FROM drinks")
     suspend fun getTotalDrinkCount(): Int

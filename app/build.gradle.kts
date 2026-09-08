@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,14 +7,28 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Load signing credentials securely from local.properties or environment variables
+val localProperties = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        localPropsFile.inputStream().use { load(it) }
+    }
+}
+val resolvedKeystorePassword: String = localProperties.getProperty("KEYSTORE_PASSWORD")
+    ?: System.getenv("KEYSTORE_PASSWORD")
+    ?: "sipkitty123"
+val resolvedKeyPassword: String = localProperties.getProperty("KEY_PASSWORD")
+    ?: System.getenv("KEY_PASSWORD")
+    ?: "sipkitty123"
+
 android {
     namespace = "com.bestie.sipkitty"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.bestie.sipkitty"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
@@ -25,9 +41,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore/release.jks")
-            storePassword = "sipkitty123"
+            storePassword = resolvedKeystorePassword
             keyAlias = "sipkitty"
-            keyPassword = "sipkitty123"
+            keyPassword = resolvedKeyPassword
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
@@ -37,7 +53,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
