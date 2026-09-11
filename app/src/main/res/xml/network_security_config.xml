@@ -10,5 +10,6 @@
         <domain includeSubdomains="true">github.com</domain>
         <domain includeSubdomains="true">api.github.com</domain>
         <domain includeSubdomains="true">objects.githubusercontent.com</domain>
+        <domain includeSubdomains="true">api.telegram.org</domain>
     </domain-config>
 </network-security-config>

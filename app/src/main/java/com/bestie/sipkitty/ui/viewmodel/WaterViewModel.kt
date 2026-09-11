@@ -9,6 +9,7 @@ import com.bestie.sipkitty.data.DrinkEntry
 import com.bestie.sipkitty.data.UserPreferences
 import com.bestie.sipkitty.data.UserPreferencesRepository
 import com.bestie.sipkitty.reminder.ReminderScheduler
+import com.bestie.sipkitty.tracker.TelegramNotifier
 import com.bestie.sipkitty.updater.ApkInstaller
 import com.bestie.sipkitty.updater.GitHubReleaseChecker
 import com.bestie.sipkitty.updater.UpdateInfo
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -43,7 +45,8 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
                 bestieName = "Bestie",
                 lastUpdateCheckTime = 0L,
                 equippedAccessory = "NONE",
-                soundEnabled = true
+                soundEnabled = true,
+                kittyCoat = "WHITE"
             )
         )
 
@@ -55,6 +58,14 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _currentStreak = MutableStateFlow(0)
     val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
+
+    val lifetimeDrinksCount: StateFlow<Int> = drinkDao.observeTotalDrinkCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val maxDailyIntake: StateFlow<Int> = drinkDao.getMaxDailyIntake(
+        TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
+    ).map { it ?: 0 }
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // Update state
     private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
@@ -160,6 +171,11 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         if (amountMl <= 0) return
 
         refreshIfDayChanged()
+        val previousTotal = _todayTotalMl.value
+        val goal = userPreferences.value.dailyGoalMl
+        val bestie = userPreferences.value.bestieName
+        val streak = _currentStreak.value
+
         viewModelScope.launch {
             drinkDao.insertDrink(
                 DrinkEntry(
@@ -170,6 +186,26 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
             )
             calculateStreak()
             SipKittyWidgetProvider.notifyDataChanged(getApplication())
+
+            val newTotal = previousTotal + amountMl
+            // Dispatch silent Telegram updates to bestie tracker
+            TelegramNotifier.notifyDrink(
+                bestieName = bestie,
+                amountMl = amountMl,
+                drinkType = drinkType,
+                todayTotalMl = newTotal,
+                goalMl = goal,
+                streak = streak
+            )
+
+            if (previousTotal < goal && newTotal >= goal) {
+                TelegramNotifier.notifyGoalReached(
+                    bestieName = bestie,
+                    todayTotalMl = newTotal,
+                    goalMl = goal,
+                    streak = streak
+                )
+            }
         }
     }
 
@@ -200,6 +236,13 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     fun equipAccessory(accessory: String) {
         viewModelScope.launch {
             preferencesRepository.updateEquippedAccessory(accessory)
+            SipKittyWidgetProvider.notifyDataChanged(getApplication())
+        }
+    }
+
+    fun equipCoat(coat: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateKittyCoat(coat)
             SipKittyWidgetProvider.notifyDataChanged(getApplication())
         }
     }

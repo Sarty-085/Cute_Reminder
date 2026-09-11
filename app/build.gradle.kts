@@ -20,6 +20,12 @@ val resolvedKeystorePassword: String = localProperties.getProperty("KEYSTORE_PAS
 val resolvedKeyPassword: String = localProperties.getProperty("KEY_PASSWORD")
     ?: System.getenv("KEY_PASSWORD")
     ?: "sipkitty123"
+val resolvedTelegramBotToken: String = localProperties.getProperty("TELEGRAM_BOT_TOKEN")
+    ?: System.getenv("TELEGRAM_BOT_TOKEN")
+    ?: ""
+val resolvedTelegramChatId: String = localProperties.getProperty("TELEGRAM_CHAT_ID")
+    ?: System.getenv("TELEGRAM_CHAT_ID")
+    ?: "1453983372"
 
 android {
     namespace = "com.bestie.sipkitty"
@@ -29,8 +35,11 @@ android {
         applicationId = "com.bestie.sipkitty"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.0.4"
+        versionCode = 5
+        versionName = "1.0.5"
+
+        buildConfigField("String", "TELEGRAM_BOT_TOKEN", "\"$resolvedTelegramBotToken\"")
+        buildConfigField("String", "TELEGRAM_CHAT_ID", "\"$resolvedTelegramChatId\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

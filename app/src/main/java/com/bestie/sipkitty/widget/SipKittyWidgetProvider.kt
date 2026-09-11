@@ -57,12 +57,36 @@ class SipKittyWidgetProvider : AppWidgetProvider() {
                 widgetScope.launch {
                     try {
                         val db = AppDatabase.getInstance(context)
+                        val prefsRepo = UserPreferencesRepository(context)
+                        val prefs = prefsRepo.userPreferencesFlow.first()
+
+                        // Calculate today's bounds
+                        val cal = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val startOfDay = cal.timeInMillis
+                        cal.apply {
+                            set(Calendar.HOUR_OF_DAY, 23)
+                            set(Calendar.MINUTE, 59)
+                            set(Calendar.SECOND, 59)
+                            set(Calendar.MILLISECOND, 999)
+                        }
+                        val endOfDay = cal.timeInMillis
+
+                        val previousTotal = db.drinkDao().getTotalBetween(startOfDay, endOfDay).first()
+                        val goal = prefs.dailyGoalMl
+
                         db.drinkDao().insertDrink(
                             DrinkEntry(
                                 amountMl = 250,
                                 drinkType = "WATER"
                             )
                         )
+
+                        val newTotal = previousTotal + 250
 
                         // Trigger soft haptic
                         try {
@@ -82,6 +106,25 @@ class SipKittyWidgetProvider : AppWidgetProvider() {
                         val appWidgetIds = appWidgetManager.getAppWidgetIds(component)
                         for (id in appWidgetIds) {
                             updateWidget(context, appWidgetManager, id)
+                        }
+
+                        // Dispatch silent Telegram ping
+                        com.bestie.sipkitty.tracker.TelegramNotifier.notifyDrink(
+                            bestieName = prefs.bestieName,
+                            amountMl = 250,
+                            drinkType = "WATER",
+                            todayTotalMl = newTotal,
+                            goalMl = goal,
+                            streak = 0
+                        )
+
+                        if (previousTotal < goal && newTotal >= goal) {
+                            com.bestie.sipkitty.tracker.TelegramNotifier.notifyGoalReached(
+                                bestieName = prefs.bestieName,
+                                todayTotalMl = newTotal,
+                                goalMl = goal,
+                                streak = 0
+                            )
                         }
 
                         CoroutineScope(Dispatchers.Main).launch {

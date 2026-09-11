@@ -20,6 +20,7 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 -keep class com.bestie.sipkitty.updater.** { *; }
+-keep class com.bestie.sipkitty.tracker.** { *; }
 
 # OkHttp
 -dontwarn okhttp3.**

@@ -20,8 +20,9 @@ data class UserPreferences(
     val endHour: Int,
     val bestieName: String,
     val lastUpdateCheckTime: Long,
-    val equippedAccessory: String = "NONE", // NONE, FLOWER, RIBBON, BERET, SUNGLASSES, BOBA, TIARA
-    val soundEnabled: Boolean = true
+    val equippedAccessory: String = "NONE", // NONE, FLOWER, RIBBON, BERET, SUNGLASSES, BOBA, TIARA, BELL, STAR, WIZARD, CROWN, WINGS, CHEF
+    val soundEnabled: Boolean = true,
+    val kittyCoat: String = "WHITE" // WHITE, ORANGE, BLACK, CALICO, PINK
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -36,6 +37,7 @@ class UserPreferencesRepository(private val context: Context) {
         val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val EQUIPPED_ACCESSORY = stringPreferencesKey("equipped_accessory")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
+        val KITTY_COAT = stringPreferencesKey("kitty_coat")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
@@ -48,7 +50,8 @@ class UserPreferencesRepository(private val context: Context) {
             bestieName = preferences[PreferencesKeys.BESTIE_NAME] ?: "Bestie",
             lastUpdateCheckTime = preferences[PreferencesKeys.LAST_UPDATE_CHECK] ?: 0L,
             equippedAccessory = preferences[PreferencesKeys.EQUIPPED_ACCESSORY] ?: "NONE",
-            soundEnabled = preferences[PreferencesKeys.SOUND_ENABLED] ?: true
+            soundEnabled = preferences[PreferencesKeys.SOUND_ENABLED] ?: true,
+            kittyCoat = preferences[PreferencesKeys.KITTY_COAT] ?: "WHITE"
         )
     }
 
@@ -98,6 +101,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateSoundEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SOUND_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateKittyCoat(coat: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KITTY_COAT] = coat
         }
     }
 }

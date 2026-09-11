@@ -30,6 +30,12 @@ interface DrinkDao {
     @Query("SELECT COUNT(*) FROM drinks")
     suspend fun getTotalDrinkCount(): Int
 
+    @Query("SELECT COUNT(*) FROM drinks")
+    fun observeTotalDrinkCount(): Flow<Int>
+
     @Query("SELECT COALESCE(SUM(amountMl), 0) FROM drinks")
     suspend fun getLifetimeTotal(): Long
+
+    @Query("SELECT MAX(daily_total) FROM (SELECT SUM(amountMl) as daily_total FROM drinks GROUP BY ((timestamp + :tzOffsetMs) / 86400000))")
+    fun getMaxDailyIntake(tzOffsetMs: Long): Flow<Int?>
 }

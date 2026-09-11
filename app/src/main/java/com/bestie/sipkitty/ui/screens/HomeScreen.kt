@@ -138,6 +138,7 @@ fun HomeScreen(
                 progress = progress,
                 isSleepMode = isSleepMode,
                 equippedAccessory = prefs.equippedAccessory,
+                kittyCoat = prefs.kittyCoat,
                 bestieName = prefs.bestieName,
                 soundEnabled = prefs.soundEnabled,
                 modifier = Modifier.fillMaxWidth()

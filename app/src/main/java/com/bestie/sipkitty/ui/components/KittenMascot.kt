@@ -65,6 +65,7 @@ fun KittenMascot(
     progress: Float,
     isSleepMode: Boolean = false,
     equippedAccessory: String = "NONE",
+    kittyCoat: String = "WHITE",
     bestieName: String = "Bestie",
     soundEnabled: Boolean = true,
     modifier: Modifier = Modifier
@@ -196,6 +197,7 @@ fun KittenMascot(
                     mood = mood,
                     tailAngle = tailAngle,
                     equippedAccessory = equippedAccessory,
+                    kittyCoat = kittyCoat,
                     sleepZzzAlpha = sleepZzzAlpha
                 )
             }
@@ -209,11 +211,28 @@ private fun DrawScope.drawKitten(
     mood: KittenMood,
     tailAngle: Float,
     equippedAccessory: String,
+    kittyCoat: String,
     sleepZzzAlpha: Float
 ) {
-    val furColor = Color(0xFFFFFDF9)
-    val outlineColor = Color(0xFF6D4C41)
-    val earInnerColor = SakuraPink
+    val furColor = when (kittyCoat) {
+        "ORANGE" -> Color(0xFFFFB049)
+        "BLACK" -> Color(0xFF2C2C34)
+        "CALICO" -> Color(0xFFFFFDF9)
+        "PINK" -> Color(0xFFFFD1DC)
+        else -> Color(0xFFFFFDF9) // WHITE Snowball
+    }
+    val outlineColor = when (kittyCoat) {
+        "ORANGE" -> Color(0xFF5D4037)
+        "BLACK" -> Color(0xFF18181E)
+        "PINK" -> Color(0xFF88495A)
+        else -> Color(0xFF6D4C41)
+    }
+    val earInnerColor = when (kittyCoat) {
+        "BLACK" -> Color(0xFF4A4A58)
+        "ORANGE" -> Color(0xFFFF8A65)
+        "PINK" -> Color(0xFFFF8DA1)
+        else -> SakuraPink
+    }
     val strokeWidth = 5f
 
     // Night Mode Background Stars & Moon
@@ -298,10 +317,29 @@ private fun DrawScope.drawKitten(
     drawCircle(color = furColor, radius = headRadius, center = Offset(cx, headCenterY))
     drawCircle(color = outlineColor, radius = headRadius, center = Offset(cx, headCenterY), style = Stroke(width = strokeWidth))
 
+    // Coat Markings
+    when (kittyCoat) {
+        "ORANGE" -> {
+            // Tabby Forehead Stripes
+            val stripeColor = Color(0xFFE65100).copy(alpha = 0.55f)
+            drawLine(stripeColor, Offset(cx, headCenterY - 34f), Offset(cx, headCenterY - 22f), strokeWidth = 3f, cap = StrokeCap.Round)
+            drawLine(stripeColor, Offset(cx - 11f, headCenterY - 32f), Offset(cx - 8f, headCenterY - 22f), strokeWidth = 3f, cap = StrokeCap.Round)
+            drawLine(stripeColor, Offset(cx + 11f, headCenterY - 32f), Offset(cx + 8f, headCenterY - 22f), strokeWidth = 3f, cap = StrokeCap.Round)
+        }
+        "CALICO" -> {
+            // Cute ginger patch on right ear/head and dark brown on left
+            drawCircle(Color(0xFFFFB049), radius = 18f, center = Offset(cx + 26f, headCenterY - 24f))
+            drawCircle(Color(0xFF4E342E), radius = 15f, center = Offset(cx - 26f, headCenterY - 24f))
+        }
+    }
+
     // 5. Blushing Cheeks
-    val blushColor = SakuraPink.copy(alpha = 0.85f)
+    val blushColor = if (kittyCoat == "BLACK") SakuraPink.copy(alpha = 0.5f) else SakuraPink.copy(alpha = 0.85f)
     drawOval(color = blushColor, topLeft = Offset(cx - 40f, headCenterY + 4f), size = Size(18f, 11f))
     drawOval(color = blushColor, topLeft = Offset(cx + 22f, headCenterY + 4f), size = Size(18f, 11f))
+
+    // Eye color
+    val eyeColor = if (kittyCoat == "BLACK") Color(0xFFFFD54F) else outlineColor
 
     // 6. Eyes according to mood
     when (mood) {
@@ -314,8 +352,8 @@ private fun DrawScope.drawKitten(
                 moveTo(cx + 10f, headCenterY + 2f)
                 quadraticTo(cx + 20f, headCenterY + 10f, cx + 30f, headCenterY + 2f)
             }
-            drawPath(leftEye, color = outlineColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
-            drawPath(rightEye, color = outlineColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+            drawPath(leftEye, color = eyeColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+            drawPath(rightEye, color = eyeColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
         }
         KittenMood.HAPPY -> {
             val leftEye = Path().apply {
@@ -326,13 +364,13 @@ private fun DrawScope.drawKitten(
                 moveTo(cx + 10f, headCenterY + 5f)
                 quadraticTo(cx + 20f, headCenterY - 6f, cx + 30f, headCenterY + 5f)
             }
-            drawPath(leftEye, color = outlineColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
-            drawPath(rightEye, color = outlineColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+            drawPath(leftEye, color = eyeColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+            drawPath(rightEye, color = eyeColor, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
         }
         KittenMood.CELEBRATING -> {
-            drawCircle(color = outlineColor, radius = 7f, center = Offset(cx - 20f, headCenterY))
+            drawCircle(color = eyeColor, radius = 7f, center = Offset(cx - 20f, headCenterY))
             drawCircle(color = Color.White, radius = 2.5f, center = Offset(cx - 22f, headCenterY - 2f))
-            drawCircle(color = outlineColor, radius = 7f, center = Offset(cx + 20f, headCenterY))
+            drawCircle(color = eyeColor, radius = 7f, center = Offset(cx + 20f, headCenterY))
             drawCircle(color = Color.White, radius = 2.5f, center = Offset(cx + 18f, headCenterY - 2f))
         }
     }
@@ -355,10 +393,11 @@ private fun DrawScope.drawKitten(
     drawPath(mouthPath, color = outlineColor, style = Stroke(width = 3.5f, cap = StrokeCap.Round))
 
     // Whiskers
-    drawLine(color = outlineColor.copy(alpha = 0.7f), start = Offset(cx - 36f, headCenterY + 2f), end = Offset(cx - 56f, headCenterY), strokeWidth = 2.5f, cap = StrokeCap.Round)
-    drawLine(color = outlineColor.copy(alpha = 0.7f), start = Offset(cx - 36f, headCenterY + 8f), end = Offset(cx - 54f, headCenterY + 12f), strokeWidth = 2.5f, cap = StrokeCap.Round)
-    drawLine(color = outlineColor.copy(alpha = 0.7f), start = Offset(cx + 36f, headCenterY + 2f), end = Offset(cx + 56f, headCenterY), strokeWidth = 2.5f, cap = StrokeCap.Round)
-    drawLine(color = outlineColor.copy(alpha = 0.7f), start = Offset(cx + 36f, headCenterY + 8f), end = Offset(cx + 54f, headCenterY + 12f), strokeWidth = 2.5f, cap = StrokeCap.Round)
+    val whiskerColor = if (kittyCoat == "BLACK") Color(0xFFEEEEEE).copy(alpha = 0.8f) else outlineColor.copy(alpha = 0.7f)
+    drawLine(color = whiskerColor, start = Offset(cx - 36f, headCenterY + 2f), end = Offset(cx - 56f, headCenterY), strokeWidth = 2.5f, cap = StrokeCap.Round)
+    drawLine(color = whiskerColor, start = Offset(cx - 36f, headCenterY + 8f), end = Offset(cx - 54f, headCenterY + 12f), strokeWidth = 2.5f, cap = StrokeCap.Round)
+    drawLine(color = whiskerColor, start = Offset(cx + 36f, headCenterY + 2f), end = Offset(cx + 56f, headCenterY), strokeWidth = 2.5f, cap = StrokeCap.Round)
+    drawLine(color = whiskerColor, start = Offset(cx + 36f, headCenterY + 8f), end = Offset(cx + 54f, headCenterY + 12f), strokeWidth = 2.5f, cap = StrokeCap.Round)
 
     // 8. Sleep Mode Blanket & Nightcap OR Standard Paws & Accessories
     if (mood == KittenMood.SLEEPING) {
@@ -385,24 +424,26 @@ private fun DrawScope.drawKitten(
         drawPath(blanketPath, color = MintPastel.copy(alpha = 0.95f))
         drawPath(blanketPath, color = outlineColor, style = Stroke(width = strokeWidth))
 
-        // Tiny paws resting over the blanket
-        drawRoundRect(color = furColor, topLeft = Offset(cx - 30f, blanketTop - 6f), size = Size(18f, 16f), cornerRadius = CornerRadius(8f, 8f))
+        // Tiny paws resting over the blanket (white mitts for black cat)
+        val pawColor = if (kittyCoat == "BLACK") Color(0xFFFFFDF9) else furColor
+        drawRoundRect(color = pawColor, topLeft = Offset(cx - 30f, blanketTop - 6f), size = Size(18f, 16f), cornerRadius = CornerRadius(8f, 8f))
         drawRoundRect(color = outlineColor, topLeft = Offset(cx - 30f, blanketTop - 6f), size = Size(18f, 16f), cornerRadius = CornerRadius(8f, 8f), style = Stroke(width = 3.5f))
-        drawRoundRect(color = furColor, topLeft = Offset(cx + 12f, blanketTop - 6f), size = Size(18f, 16f), cornerRadius = CornerRadius(8f, 8f))
+        drawRoundRect(color = pawColor, topLeft = Offset(cx + 12f, blanketTop - 6f), size = Size(18f, 16f), cornerRadius = CornerRadius(8f, 8f))
         drawRoundRect(color = outlineColor, topLeft = Offset(cx + 12f, blanketTop - 6f), size = Size(18f, 16f), cornerRadius = CornerRadius(8f, 8f), style = Stroke(width = 3.5f))
     } else {
         // Front Paws
-        drawRoundRect(color = furColor, topLeft = Offset(cx - 26f, cy + 50f), size = Size(20f, 18f), cornerRadius = CornerRadius(10f, 10f))
+        val pawColor = if (kittyCoat == "BLACK") Color(0xFFFFFDF9) else furColor
+        drawRoundRect(color = pawColor, topLeft = Offset(cx - 26f, cy + 50f), size = Size(20f, 18f), cornerRadius = CornerRadius(10f, 10f))
         drawRoundRect(color = outlineColor, topLeft = Offset(cx - 26f, cy + 50f), size = Size(20f, 18f), cornerRadius = CornerRadius(10f, 10f), style = Stroke(width = strokeWidth))
-        drawRoundRect(color = furColor, topLeft = Offset(cx + 6f, cy + 50f), size = Size(20f, 18f), cornerRadius = CornerRadius(10f, 10f))
+        drawRoundRect(color = pawColor, topLeft = Offset(cx + 6f, cy + 50f), size = Size(20f, 18f), cornerRadius = CornerRadius(10f, 10f))
         drawRoundRect(color = outlineColor, topLeft = Offset(cx + 6f, cy + 50f), size = Size(20f, 18f), cornerRadius = CornerRadius(10f, 10f), style = Stroke(width = strokeWidth))
 
         // Draw Equipped Accessory
         drawAccessory(cx, headCenterY, cy, equippedAccessory, outlineColor)
 
         if (mood == KittenMood.CELEBRATING) {
-            // Golden Princess Crown if no tiara equipped (or on top)
-            if (equippedAccessory != "TIARA") {
+            // Golden Princess Crown if no tiara or crown equipped
+            if (equippedAccessory != "TIARA" && equippedAccessory != "CROWN") {
                 val crownPath = Path().apply {
                     moveTo(cx - 22f, headCenterY - 45f)
                     lineTo(cx - 26f, headCenterY - 65f)
@@ -435,7 +476,6 @@ private fun DrawScope.drawAccessory(
 ) {
     when (accessory) {
         "FLOWER" -> {
-            // Sakura Flower Clip on left ear
             val flowerCenter = Offset(cx - 38f, headCenterY - 40f)
             val petalColor = SakuraPink
             drawCircle(color = petalColor, radius = 6f, center = Offset(flowerCenter.x - 7f, flowerCenter.y))
@@ -445,7 +485,6 @@ private fun DrawScope.drawAccessory(
             drawCircle(color = GoldStar, radius = 4f, center = flowerCenter)
         }
         "RIBBON" -> {
-            // Cute Pink Silk Bow under chin
             val bowCenter = Offset(cx, cy + 18f)
             val leftWing = Path().apply {
                 moveTo(bowCenter.x, bowCenter.y)
@@ -466,34 +505,27 @@ private fun DrawScope.drawAccessory(
             drawCircle(color = AccentHeart, radius = 5f, center = bowCenter)
         }
         "BERET" -> {
-            // Strawberry Beret on head
             val beretCenter = Offset(cx, headCenterY - 46f)
             drawOval(color = Color(0xFFFF5252), topLeft = Offset(beretCenter.x - 26f, beretCenter.y - 12f), size = Size(52f, 24f))
             drawOval(color = outlineColor, topLeft = Offset(beretCenter.x - 26f, beretCenter.y - 12f), size = Size(52f, 24f), style = Stroke(width = 3f))
-            // Green leaf on top
             drawCircle(color = Color(0xFF4CAF50), radius = 3.5f, center = Offset(beretCenter.x, beretCenter.y - 12f))
         }
         "SUNGLASSES" -> {
-            // Cool Sunglasses over eyes
             val glassY = headCenterY - 4f
             drawRoundRect(color = Color(0xFF263238), topLeft = Offset(cx - 36f, glassY), size = Size(30f, 18f), cornerRadius = CornerRadius(6f, 6f))
             drawRoundRect(color = Color(0xFF263238), topLeft = Offset(cx + 6f, glassY), size = Size(30f, 18f), cornerRadius = CornerRadius(6f, 6f))
             drawLine(color = Color(0xFF263238), start = Offset(cx - 6f, glassY + 6f), end = Offset(cx + 6f, glassY + 6f), strokeWidth = 3f)
         }
         "BOBA" -> {
-            // Mini Handheld Boba Cup beside right paw
             val bobaLeft = cx + 24f
             val bobaTop = cy + 28f
             drawRoundRect(color = Color(0xFFFFF8E1), topLeft = Offset(bobaLeft, bobaTop), size = Size(18f, 26f), cornerRadius = CornerRadius(4f, 4f))
             drawRoundRect(color = outlineColor, topLeft = Offset(bobaLeft, bobaTop), size = Size(18f, 26f), cornerRadius = CornerRadius(4f, 4f), style = Stroke(width = 2.5f))
-            // Straw
             drawLine(color = SakuraPink, start = Offset(bobaLeft + 9f, bobaTop), end = Offset(bobaLeft + 13f, bobaTop - 8f), strokeWidth = 3f, cap = StrokeCap.Round)
-            // Pearls
             drawCircle(color = Color(0xFF4E342E), radius = 2f, center = Offset(bobaLeft + 5f, bobaTop + 20f))
             drawCircle(color = Color(0xFF4E342E), radius = 2f, center = Offset(bobaLeft + 12f, bobaTop + 21f))
         }
         "TIARA" -> {
-            // Sparkling Princess Tiara
             val tiaraPath = Path().apply {
                 moveTo(cx - 24f, headCenterY - 44f)
                 lineTo(cx - 26f, headCenterY - 62f)
@@ -508,5 +540,95 @@ private fun DrawScope.drawAccessory(
             drawPath(tiaraPath, color = Color(0xFFF57F17), style = Stroke(width = 3f))
             drawCircle(color = Color.White, radius = 2.5f, center = Offset(cx, headCenterY - 60f))
         }
+        "BELL" -> {
+            // Golden Bell Collar
+            val collarY = cy + 20f
+            drawRoundRect(color = Color(0xFFE53935), topLeft = Offset(cx - 24f, collarY), size = Size(48f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
+            drawRoundRect(color = outlineColor, topLeft = Offset(cx - 24f, collarY), size = Size(48f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f), style = Stroke(width = 2f))
+            val bellCenter = Offset(cx, collarY + 11f)
+            drawCircle(color = GoldStar, radius = 7f, center = bellCenter)
+            drawCircle(color = Color(0xFFF57F17), radius = 7f, center = bellCenter, style = Stroke(width = 2f))
+            drawCircle(color = Color(0xFF5D4037), radius = 1.5f, center = Offset(bellCenter.x, bellCenter.y + 2f))
+        }
+        "STAR" -> {
+            // Sleepy Star Hairclip
+            val starCenter = Offset(cx + 38f, headCenterY - 40f)
+            val starPath = Path().apply {
+                val outerR = 9f
+                val innerR = 4f
+                for (i in 0 until 5) {
+                    val angleOuter = Math.toRadians((i * 72 - 18).toDouble())
+                    val angleInner = Math.toRadians((i * 72 + 18).toDouble())
+                    val ox = (starCenter.x + outerR * Math.cos(angleOuter)).toFloat()
+                    val oy = (starCenter.y + outerR * Math.sin(angleOuter)).toFloat()
+                    val ix = (starCenter.x + innerR * Math.cos(angleInner)).toFloat()
+                    val iy = (starCenter.y + innerR * Math.sin(angleInner)).toFloat()
+                    if (i == 0) moveTo(ox, oy) else lineTo(ox, oy)
+                    lineTo(ix, iy)
+                }
+                close()
+            }
+            drawPath(starPath, color = GoldStar)
+            drawPath(starPath, color = Color(0xFFF57F17), style = Stroke(width = 2f))
+        }
+        "WIZARD" -> {
+            // Magic Wizard Hat
+            val hatPath = Path().apply {
+                moveTo(cx - 28f, headCenterY - 40f)
+                lineTo(cx + 28f, headCenterY - 40f)
+                lineTo(cx + 8f, headCenterY - 78f)
+                close()
+            }
+            drawPath(hatPath, color = Color(0xFF5E35B1))
+            drawPath(hatPath, color = outlineColor, style = Stroke(width = 2.5f))
+            drawRect(color = GoldStar, topLeft = Offset(cx - 24f, headCenterY - 45f), size = Size(48f, 5f))
+            drawOval(color = Color(0xFF4527A0), topLeft = Offset(cx - 32f, headCenterY - 42f), size = Size(64f, 10f))
+            drawOval(color = outlineColor, topLeft = Offset(cx - 32f, headCenterY - 42f), size = Size(64f, 10f), style = Stroke(width = 2.5f))
+        }
+        "CROWN" -> {
+            // Ocean Crystal Crown
+            val crownPath = Path().apply {
+                moveTo(cx - 22f, headCenterY - 44f)
+                lineTo(cx - 26f, headCenterY - 65f)
+                lineTo(cx - 10f, headCenterY - 55f)
+                lineTo(cx, headCenterY - 72f)
+                lineTo(cx + 10f, headCenterY - 55f)
+                lineTo(cx + 26f, headCenterY - 65f)
+                lineTo(cx + 22f, headCenterY - 44f)
+                close()
+            }
+            drawPath(crownPath, color = Color(0xFF00E5FF))
+            drawPath(crownPath, color = Color(0xFF00838F), style = Stroke(width = 2.5f))
+            drawCircle(color = Color.White, radius = 3f, center = Offset(cx, headCenterY - 62f))
+        }
+        "WINGS" -> {
+            // Angel Wings
+            val leftWing = Path().apply {
+                moveTo(cx - 35f, cy + 10f)
+                quadraticTo(cx - 75f, cy - 15f, cx - 65f, cy + 25f)
+                quadraticTo(cx - 45f, cy + 30f, cx - 35f, cy + 20f)
+                close()
+            }
+            val rightWing = Path().apply {
+                moveTo(cx + 35f, cy + 10f)
+                quadraticTo(cx + 75f, cy - 15f, cx + 65f, cy + 25f)
+                quadraticTo(cx + 45f, cy + 30f, cx + 35f, cy + 20f)
+                close()
+            }
+            drawPath(leftWing, color = Color(0xFFF3E5F5))
+            drawPath(leftWing, color = Color(0xFFCE93D8), style = Stroke(width = 2.5f))
+            drawPath(rightWing, color = Color(0xFFF3E5F5))
+            drawPath(rightWing, color = Color(0xFFCE93D8), style = Stroke(width = 2.5f))
+        }
+        "CHEF" -> {
+            // Chef / Baker Toque
+            val chefY = headCenterY - 46f
+            drawCircle(color = Color.White, radius = 14f, center = Offset(cx - 15f, chefY - 14f))
+            drawCircle(color = Color.White, radius = 17f, center = Offset(cx, chefY - 20f))
+            drawCircle(color = Color.White, radius = 14f, center = Offset(cx + 15f, chefY - 14f))
+            drawRoundRect(color = Color(0xFFF5F5F5), topLeft = Offset(cx - 20f, chefY - 6f), size = Size(40f, 12f), cornerRadius = CornerRadius(2f, 2f))
+            drawRoundRect(color = outlineColor, topLeft = Offset(cx - 20f, chefY - 6f), size = Size(40f, 12f), cornerRadius = CornerRadius(2f, 2f), style = Stroke(width = 2.5f))
+        }
     }
 }
+
